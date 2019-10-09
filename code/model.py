@@ -1,9 +1,15 @@
+from collections import namedtuple
+import random
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
 """Code based on https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html"""
+
+Transition = namedtuple('Transition',
+                        ('state', 'action', 'next_state', 'reward'))
 
 class ReplayMemory(object):
 

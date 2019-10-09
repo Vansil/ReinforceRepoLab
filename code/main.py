@@ -1,10 +1,11 @@
+from collections import namedtuple
+
 import gym
 import math
 import random
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-from collections import namedtuple
 from itertools import count
 from PIL import Image
 
@@ -18,6 +19,9 @@ from model import ReplayMemory, DQN
 
 """Code based on https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html"""
 
+Transition = namedtuple('Transition',
+                        ('state', 'action', 'next_state', 'reward'))
+
 env = gym.make('CartPole-v0').unwrapped
 
 # set up matplotlib
@@ -30,8 +34,7 @@ plt.ion()
 # if gpu is to be used
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-Transition = namedtuple('Transition',
-                        ('state', 'action', 'next_state', 'reward'))
+
 
 resize = T.Compose([T.ToPILImage(),
                     T.Resize(40, interpolation=Image.CUBIC),
