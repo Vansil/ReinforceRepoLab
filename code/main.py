@@ -25,14 +25,29 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--env',
                     type=int,
                     required=True,
-                    help='Which environment to use; 0:Baird, 1:Mountain Car, 2:Bipedal Walker, 3:Hanging Joints, 4:Pole Balancing'
+                    help='Which environment to use; 0:Baird, 1:Mountain Car, 2:Bipedal Walker, 3:Hanging Joints, 4:Pole Balancing.'
 )
 
 # TODO:
+parser.add_argument('--replay',
+                    type=bool,
+                    required=True,
+                    help='True if the training should involve Experience Replay.')
+
+parser.add_argument('--fixed_T_policy',
+                    type=bool,
+                    required=True,
+                    help='True if should use fixed target policy.')
+
+parser.add_argument('--reward_clip',
+                    type=int,
+                    required=True,
+                    help='Which reward clipping to use; ')
+
 # Add option for replay
 # Add option for Fixed Target Policy
 # Add option for type of Reward Clipping
-# Add option for other (hyper) parameters
+# Add options for other (hyper) parameters
 
 args = parser.parse_args()
 
@@ -46,6 +61,7 @@ TARGET_UPDATE = 10
 Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
 
+## Initialize the Environment
 assert args.env in env_options
 
 env_options = {
