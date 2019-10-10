@@ -16,14 +16,12 @@ class ReplayMemory(object):
     def __init__(self, capacity):
         self.capacity = capacity
         self.memory = []
-        self.position = 0
 
-    def push(self, *args):
+    def push(self, transition):
         """Saves a transition."""
-        if len(self.memory) < self.capacity:
-            self.memory.append(None)
-        self.memory[self.position] = Transition(*args)
-        self.position = (self.position + 1) % self.capacity
+        self.memory.append(transition)
+        if len(self.memory)>self.capacity:
+            del self.memory[0]
 
     def sample(self, batch_size):
         return random.sample(self.memory, batch_size)
@@ -31,7 +29,6 @@ class ReplayMemory(object):
     def __len__(self):
         return len(self.memory)
 
-# TODO: Define our own NN
 
 class DQN(nn.Module):
 

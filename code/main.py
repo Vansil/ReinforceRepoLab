@@ -7,199 +7,148 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from itertools import count
-from PIL import Image
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-import torchvision.transforms as T
 
 import argparse
-
+from train import run_episodes
 from model import ReplayMemory, DQN
 
 """Code based on https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html"""
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--env',
-                    type=int,
-                    required=True,
-                    help='Which environment to use; 0:Baird, 1:Mountain Car, 2:Bipedal Walker, 3:Hanging Joints, 4:Pole Balancing.'
-)
 
 # TODO:
-parser.add_argument('--replay',
-                    type=bool,
-                    required=True,
-                    help='True if the training should involve Experience Replay.')
-
-parser.add_argument('--fixed_T_policy',
-                    type=bool,
-                    required=True,
-                    help='True if should use fixed target policy.')
-
-parser.add_argument('--reward_clip',
-                    type=int,
-                    required=True,
-                    help='Which reward clipping to use; ')
-
 # Add option for replay
-# Add option for Fixed Target Policy
-# Add option for type of Reward Clipping
-# Add options for other (hyper) parameters
-
-def get_epsilon(it, p = 0.05, when_to_end = 1000):
-    if it>=when_to_end:
-        return p
-    else:
-        return 1-(it)/(when_to_end*(1+p))
-def select_action(model, state, epsilon):
-    state = torch.tensor(state).to(dtype = torch.float)
-    scores = model(state)
-    action = int(np.random.rand() * 2) if np.random.rand() < epsilon else torch.argmax(scores).item()
-    return action
-
-def compute_q_val(model, state, action):
-    scores = model(state)
-    q_val = torch.gather(scores, 1 , action.unsqueeze(1))
-    return q_val
-
-def compute_target(model, reward, next_state, done, discount_factor):
-    # done is a boolean (vector) that indicates if next_state is terminal (episode is done)
-    scores = model(next_state)
-    next_q = torch.max(scores, 1)[0]
-    target = reward+ (torch.ones(done.size())-done.to(dtype=torch.float)) *discount_factor*next_q
-    target = target.unsqueeze(1)
-    return target
-
-def train(model, memory, optimizer, batch_size, discount_factor):
-    # DO NOT MODIFY THIS FUNCTION
-
-    # don't learn without some decent experience
-    if len(memory) < batch_size:
-        return None
-
-    # random transition batch is taken from experience replay memory
-    transitions = memory.sample(batch_size)
-
-    # transition is a list of 4-tuples, instead we want 4 vectors (as torch.Tensor's)
-    state, action, reward, next_state, done = zip(*transitions)
-
-    # convert to PyTorch and define types
-    state = torch.tensor(state, dtype=torch.float)
-    action = torch.tensor(action, dtype=torch.int64)  # Need 64 bit to use them as index
-    next_state = torch.tensor(next_state, dtype=torch.float)
-    reward = torch.tensor(reward, dtype=torch.float)
-    done = torch.tensor(done, dtype=torch.uint8)  # Boolean
-
-    # compute the q value
-    q_val = compute_q_val(model, state, action)
-
-    with torch.no_grad():  # Don't compute gradient info for the target (semi-gradient)
-        target = compute_target(model, reward, next_state, done, discount_factor)
-
-    # loss is measured from error between current and newly expected Q values
-    loss = F.smooth_l1_loss(q_val, target)
-
-    # backpropagation of loss to Neural Network (PyTorch magic)
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
-
-    return loss.item()  # Returns a Python scalar, and releases history (similar to .detach())
-def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate):
-
-    optimizer = optim.Adam(model.parameters(), learn_rate)
-
-    global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
-    episode_durations = []  #
-    losses = []
-    for i in range(num_episodes):
-        #initialise inside the episode counter
-        episode_steps=0
-        #initialise epsilon
-        epsilon = get_epsilon(global_steps)
-        #start the environment
-        s = env.reset()
-        action = select_action(model, s, epsilon)
-        while True:
-            s_new, r, is_terminal, prob  = env.step(action)
-            #store the state
-            memory.push((s, action, r, s_new, is_terminal))
-            #train the Qnet
-            loss = train(model, memory, optimizer, batch_size, discount_factor)
-            losses.append(loss)
-            #update counters
-            episode_steps+=1
-            global_steps+=1
-            #take new action
-            epsilon = get_epsilon(global_steps)
-            action = select_action(model, s_new, epsilon)
-            s = s_new
-            if is_terminal:
-                episode_durations.append(episode_steps)
-                break
-
-    return episode_durations, losses
-# TODO:
-# Add option for replay
-# Add option for Fixed Target Policy
-# Add option for type of Reward Clipping
-# Add option for other (hyper) parameters
 def main(args):
+    # experiment params
+    env = args.env
+    replay_bool = args.replay
+    target_bool = args.fixed_T_policy
+    reward_num = args.reward_clip
+    seed = args.seed
+    layers = args.architecture
 
+    # training params
+    num_episodes = args.n_episodes
+    lr = args.lr
+    batch_size = args.batch_size
+    discount_factor = args.gamma
+    target_update = args.target_update_every
 
-    batch_size = 128
-    discount_factor = 0.999
-    target_update = 10
+    # misc
+    if not replay_bool:
+        memory_size = 10000
+    else:
+        memory_size = 1
+        batch_size = 1
 
-    Transition = namedtuple('Transition',
-                            ('state', 'action', 'next_state', 'reward'))
-
-
+    # if target network is the same, then update every time
+    if not target_bool:
+        target_update = 0
 
     env_options = {
-        0 : None,
-        4 : gym.make('CartPole-v0').unwrapped,
-    }
-    assert args.env in env_options
+        0: None,
+        1: gym.make('MountainCar-v0'),
+        2: gym.make('BipedalWalker-v2'),
+        3: gym.make('Acrobot-v1'),
+        4: gym.make('CartPole-v0'),
 
-    env = env_options[args.env]
+    }
+
+    assert env in env_options.keys()
+
+    env = env_options[env]
+
+    # seed
+    torch.manual_seed(seed)
+    env.seed(seed)
+    np.random.seed(seed)
 
     # if gpu is to be used
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # device = args.device
+
+    # NOT SURE IF NECESSARY
+    # if device == "cuda":
+    # torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False
 
     # Get number of actions from gym action space
     n_actions = env.action_space.n
+    # Get number of features from gym environment
+    obs = env.reset()
+    num_features = obs.size
 
-    model = DQN(screen_height, screen_width, n_actions).to(device)
-    target = DQN(screen_height, screen_width, n_actions).to(device)
-    target.load_state_dict(model.state_dict())
-    target.eval()
+    # models
+    model = DQN(num_features, n_actions, layers).to(device)
+    target_net = DQN(num_features, n_actions, layers).to(device)
+    target_net.load_state_dict(model.state_dict())
+    target_net.eval()
 
-    optimizer = optim.RMSprop(policy_net.parameters())
-    memory = ReplayMemory(10000)
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+    memory = ReplayMemory(memory_size)
 
-    steps_done = 0
-
-    episode_durations = []
-
-    num_episodes = 100
-    episode_durations, losses= run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
-
+    episode_durations, losses = run_episodes(model, target_net, memory, env, num_episodes, batch_size, discount_factor, optimizer,
+                                             target_update=target_update, replay_bool=replay_bool,
+                                             reward_clip=reward_num, device = device)
 
     print('Complete')
 
-    plt.ioff()
-    plt.show()
 
 if __name__ == "main":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env',
-                        type=int,
-                        required=True,
-                        help='Which environment to use; 0:Baird, 1:Mountain Car, 2:Bipedal Walker, 3:Hanging Joints, 4:Pole Balancing'
-                        )
+    experiment_parse = parser.add_argument_group('Experiments')
+    experiment_parse.add_argument(
+        '--env', type=int, required=True, default=1,
+        help='Which environment to use; 0:Baird, 1:Mountain Car, 2:Bipedal Walker, 3:Hanging Joints, 4:Pole Balancing.')
+
+    experiment_parse.add_argument(
+        '--replay', type=int, required=True, default=1,
+        help='Basically bool: 1 if the training should involve Experience Replay, else 0')
+
+    experiment_parse.add_argument(
+        '--fixed_T_policy', type=int, required=True, default=1,
+        help='Basically bool: 1 if should use fixed target policy, else 0')
+
+    experiment_parse.add_argument(
+        '--reward_clip', type=int, required=True, default=1,
+        help='Which reward clipping to use; 0: None, 1: [-1,1] R: reward*R')
+
+    experiment_parse.add_argument(
+        '--seed', type=int, required=True, default=42,
+        help='Random seed')
+
+    experiment_parse.add_argument(
+        '--architecture', type=int, required=True, default=1,
+        help='Which architecture to use: 0 : [64, 64]; 1: [256, 256] ; 2:[128, 64, 32]')
+
+    training_parse = parser.add_argument_group('Training')
+
+    training_parse.add_argument(
+        '--n_episodes', type=int, default=100,
+        help="number of episodes")
+
+    training_parse.add_argument(
+        '--batch_size', type=int, default=32,
+        help="batch size")
+
+    training_parse.add_argument(
+        '--lr', type=float, default=0.001,
+        help="learning rate")
+
+    training_parse.add_argument(
+        '--device', type=str, default="cuda:0",
+        help="Training device 'cpu' or 'cuda:0'")
+
+    training_parse.add_argument(
+        '--target_update_every', type=int, default=10,
+        help="Update target every XX episodes")
+
+    training_parse.add_argument(
+        '--gamma', type=float, default=0.999,
+        help="discount factor")
+
     args = parser.parse_args()
     main(args)
