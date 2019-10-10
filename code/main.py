@@ -21,7 +21,33 @@ from model import ReplayMemory, DQN
 
 """Code based on https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html"""
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--env',
+                    type=int,
+                    required=True,
+                    help='Which environment to use; 0:Baird, 1:Mountain Car, 2:Bipedal Walker, 3:Hanging Joints, 4:Pole Balancing.'
+)
 
+# TODO:
+parser.add_argument('--replay',
+                    type=bool,
+                    required=True,
+                    help='True if the training should involve Experience Replay.')
+
+parser.add_argument('--fixed_T_policy',
+                    type=bool,
+                    required=True,
+                    help='True if should use fixed target policy.')
+
+parser.add_argument('--reward_clip',
+                    type=int,
+                    required=True,
+                    help='Which reward clipping to use; ')
+
+# Add option for replay
+# Add option for Fixed Target Policy
+# Add option for type of Reward Clipping
+# Add options for other (hyper) parameters
 
 def get_epsilon(it, p = 0.05, when_to_end = 1000):
     if it>=when_to_end:
