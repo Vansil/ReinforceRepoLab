@@ -48,225 +48,157 @@ parser.add_argument('--reward_clip',
 # Add option for type of Reward Clipping
 # Add options for other (hyper) parameters
 
-args = parser.parse_args()
-
-BATCH_SIZE = 128
-GAMMA = 0.999
-EPS_START = 0.9
-EPS_END = 0.05
-EPS_DECAY = 200
-TARGET_UPDATE = 10
-
-Transition = namedtuple('Transition',
-                        ('state', 'action', 'next_state', 'reward'))
-
-## Initialize the Environment
-assert args.env in env_options
-
-env_options = {
-    0 : None,
-    4 : gym.make('CartPole-v0').unwrapped,
-}
-
-env = env_options[args.env]
-
-# set up matplotlib
-is_ipython = 'inline' in matplotlib.get_backend()
-if is_ipython:
-    from IPython import display
-
-plt.ion()
-
-# if gpu is to be used
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
-
-resize = T.Compose([T.ToPILImage(),
-                    T.Resize(40, interpolation=Image.CUBIC),
-                    T.ToTensor()])
-
-
-def get_cart_location(screen_width):
-    world_width = env.x_threshold * 2
-    scale = screen_width / world_width
-    return int(env.state[0] * scale + screen_width / 2.0)  # MIDDLE OF CART
-
-def get_screen():
-    # Returned screen requested by gym is 400x600x3, but is sometimes larger
-    # such as 800x1200x3. Transpose it into torch order (CHW).
-    screen = env.render(mode='rgb_array').transpose((2, 0, 1))
-    # Cart is in the lower half, so strip off the top and bottom of the screen
-    _, screen_height, screen_width = screen.shape
-    screen = screen[:, int(screen_height*0.4):int(screen_height * 0.8)]
-    view_width = int(screen_width * 0.6)
-    cart_location = get_cart_location(screen_width)
-    if cart_location < view_width // 2:
-        slice_range = slice(view_width)
-    elif cart_location > (screen_width - view_width // 2):
-        slice_range = slice(-view_width, None)
+def get_epsilon(it, p = 0.05, when_to_end = 1000):
+    if it>=when_to_end:
+        return p
     else:
-        slice_range = slice(cart_location - view_width // 2,
-                            cart_location + view_width // 2)
-    # Strip off the edges, so that we have a square image centered on a cart
-    screen = screen[:, :, slice_range]
-    # Convert to float, rescale, convert to torch tensor
-    # (this doesn't require a copy)
-    screen = np.ascontiguousarray(screen, dtype=np.float32) / 255
-    screen = torch.from_numpy(screen)
-    # Resize, and add a batch dimension (BCHW)
-    return resize(screen).unsqueeze(0).to(device)
+        return 1-(it)/(when_to_end*(1+p))
+def select_action(model, state, epsilon):
+    state = torch.tensor(state).to(dtype = torch.float)
+    scores = model(state)
+    action = int(np.random.rand() * 2) if np.random.rand() < epsilon else torch.argmax(scores).item()
+    return action
 
+def compute_q_val(model, state, action):
+    scores = model(state)
+    q_val = torch.gather(scores, 1 , action.unsqueeze(1))
+    return q_val
 
-env.reset()
-plt.figure()
-plt.imshow(get_screen().cpu().squeeze(0).permute(1, 2, 0).numpy(),
-           interpolation='none')
-plt.title('Example extracted screen')
-plt.show()
+def compute_target(model, reward, next_state, done, discount_factor):
+    # done is a boolean (vector) that indicates if next_state is terminal (episode is done)
+    scores = model(next_state)
+    next_q = torch.max(scores, 1)[0]
+    target = reward+ (torch.ones(done.size())-done.to(dtype=torch.float)) *discount_factor*next_q
+    target = target.unsqueeze(1)
+    return target
 
-# Get screen size so that we can initialize layers correctly based on shape
-# returned from AI gym. Typical dimensions at this point are close to 3x40x90
-# which is the result of a clamped and down-scaled render buffer in get_screen()
-init_screen = get_screen()
-_, _, screen_height, screen_width = init_screen.shape
+def train(model, memory, optimizer, batch_size, discount_factor):
+    # DO NOT MODIFY THIS FUNCTION
 
-# Get number of actions from gym action space
-n_actions = env.action_space.n
+    # don't learn without some decent experience
+    if len(memory) < batch_size:
+        return None
 
-policy_net = DQN(screen_height, screen_width, n_actions).to(device)
-target_net = DQN(screen_height, screen_width, n_actions).to(device)
-target_net.load_state_dict(policy_net.state_dict())
-target_net.eval()
+    # random transition batch is taken from experience replay memory
+    transitions = memory.sample(batch_size)
 
-optimizer = optim.RMSprop(policy_net.parameters())
-memory = ReplayMemory(10000)
+    # transition is a list of 4-tuples, instead we want 4 vectors (as torch.Tensor's)
+    state, action, reward, next_state, done = zip(*transitions)
 
+    # convert to PyTorch and define types
+    state = torch.tensor(state, dtype=torch.float)
+    action = torch.tensor(action, dtype=torch.int64)  # Need 64 bit to use them as index
+    next_state = torch.tensor(next_state, dtype=torch.float)
+    reward = torch.tensor(reward, dtype=torch.float)
+    done = torch.tensor(done, dtype=torch.uint8)  # Boolean
 
-steps_done = 0
+    # compute the q value
+    q_val = compute_q_val(model, state, action)
 
+    with torch.no_grad():  # Don't compute gradient info for the target (semi-gradient)
+        target = compute_target(model, reward, next_state, done, discount_factor)
 
-def select_action(state):
-    global steps_done
-    sample = random.random()
-    eps_threshold = EPS_END + (EPS_START - EPS_END) * \
-        math.exp(-1. * steps_done / EPS_DECAY)
-    steps_done += 1
-    if sample > eps_threshold:
-        with torch.no_grad():
-            # t.max(1) will return largest column value of each row.
-            # second column on max result is index of where max element was
-            # found, so we pick action with the larger expected reward.
-            return policy_net(state).max(1)[1].view(1, 1)
-    else:
-        return torch.tensor([[random.randrange(n_actions)]], device=device, dtype=torch.long)
+    # loss is measured from error between current and newly expected Q values
+    loss = F.smooth_l1_loss(q_val, target)
 
-
-episode_durations = []
-
-
-def plot_durations():
-    plt.figure(2)
-    plt.clf()
-    durations_t = torch.tensor(episode_durations, dtype=torch.float)
-    plt.title('Training...')
-    plt.xlabel('Episode')
-    plt.ylabel('Duration')
-    plt.plot(durations_t.numpy())
-    # Take 100 episode averages and plot them too
-    if len(durations_t) >= 100:
-        means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
-        means = torch.cat((torch.zeros(99), means))
-        plt.plot(means.numpy())
-
-    plt.pause(0.001)  # pause a bit so that plots are updated
-    if is_ipython:
-        display.clear_output(wait=True)
-        display.display(plt.gcf())
-
-def optimize_model():
-    if len(memory) < BATCH_SIZE:
-        return
-    transitions = memory.sample(BATCH_SIZE)
-    # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
-    # detailed explanation). This converts batch-array of Transitions
-    # to Transition of batch-arrays.
-    batch = Transition(*zip(*transitions))
-
-    # Compute a mask of non-final states and concatenate the batch elements
-    # (a final state would've been the one after which simulation ended)
-    non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
-                                          batch.next_state)), device=device, dtype=torch.uint8)
-    non_final_next_states = torch.cat([s for s in batch.next_state
-                                                if s is not None])
-    state_batch = torch.cat(batch.state)
-    action_batch = torch.cat(batch.action)
-    reward_batch = torch.cat(batch.reward)
-
-    # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
-    # columns of actions taken. These are the actions which would've been taken
-    # for each batch state according to policy_net
-    state_action_values = policy_net(state_batch).gather(1, action_batch)
-
-    # Compute V(s_{t+1}) for all next states.
-    # Expected values of actions for non_final_next_states are computed based
-    # on the "older" target_net; selecting their best reward with max(1)[0].
-    # This is merged based on the mask, such that we'll have either the expected
-    # state value or 0 in case the state was final.
-    next_state_values = torch.zeros(BATCH_SIZE, device=device)
-    next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0].detach()
-    # Compute the expected Q values
-    expected_state_action_values = (next_state_values * GAMMA) + reward_batch
-
-    # Compute Huber loss
-    loss = F.smooth_l1_loss(state_action_values, expected_state_action_values.unsqueeze(1))
-
-    # Optimize the model
+    # backpropagation of loss to Neural Network (PyTorch magic)
     optimizer.zero_grad()
     loss.backward()
-    for param in policy_net.parameters():
-        param.grad.data.clamp_(-1, 1)
     optimizer.step()
 
-num_episodes = 100
-for i_episode in range(num_episodes):
-    # Initialize the environment and state
-    env.reset()
-    last_screen = get_screen()
-    current_screen = get_screen()
-    state = current_screen - last_screen
-    for t in count():
-        # Select and perform an action
-        action = select_action(state)
-        _, reward, done, _ = env.step(action.item())
-        reward = torch.tensor([reward], device=device)
+    return loss.item()  # Returns a Python scalar, and releases history (similar to .detach())
+def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate):
 
-        # Observe new state
-        last_screen = current_screen
-        current_screen = get_screen()
-        if not done:
-            next_state = current_screen - last_screen
-        else:
-            next_state = None
+    optimizer = optim.Adam(model.parameters(), learn_rate)
 
-        # Store the transition in memory
-        memory.push(state, action, next_state, reward)
+    global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
+    episode_durations = []  #
+    losses = []
+    for i in range(num_episodes):
+        #initialise inside the episode counter
+        episode_steps=0
+        #initialise epsilon
+        epsilon = get_epsilon(global_steps)
+        #start the environment
+        s = env.reset()
+        action = select_action(model, s, epsilon)
+        while True:
+            s_new, r, is_terminal, prob  = env.step(action)
+            #store the state
+            memory.push((s, action, r, s_new, is_terminal))
+            #train the Qnet
+            loss = train(model, memory, optimizer, batch_size, discount_factor)
+            losses.append(loss)
+            #update counters
+            episode_steps+=1
+            global_steps+=1
+            #take new action
+            epsilon = get_epsilon(global_steps)
+            action = select_action(model, s_new, epsilon)
+            s = s_new
+            if is_terminal:
+                episode_durations.append(episode_steps)
+                break
 
-        # Move to the next state
-        state = next_state
+    return episode_durations, losses
+# TODO:
+# Add option for replay
+# Add option for Fixed Target Policy
+# Add option for type of Reward Clipping
+# Add option for other (hyper) parameters
+def main(args):
 
-        # Perform one step of the optimization (on the target network)
-        optimize_model()
-        if done:
-            episode_durations.append(t + 1)
-            plot_durations()
-            break
-    # Update the target network, copying all weights and biases in DQN
-    if i_episode % TARGET_UPDATE == 0:
-        target_net.load_state_dict(policy_net.state_dict())
 
-print('Complete')
-env.render()
-env.close()
-plt.ioff()
-plt.show()
+    batch_size = 128
+    discount_factor = 0.999
+    target_update = 10
+
+    Transition = namedtuple('Transition',
+                            ('state', 'action', 'next_state', 'reward'))
+
+
+
+    env_options = {
+        0 : None,
+        4 : gym.make('CartPole-v0').unwrapped,
+    }
+    assert args.env in env_options
+
+    env = env_options[args.env]
+
+    # if gpu is to be used
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Get number of actions from gym action space
+    n_actions = env.action_space.n
+
+    model = DQN(screen_height, screen_width, n_actions).to(device)
+    target = DQN(screen_height, screen_width, n_actions).to(device)
+    target.load_state_dict(model.state_dict())
+    target.eval()
+
+    optimizer = optim.RMSprop(policy_net.parameters())
+    memory = ReplayMemory(10000)
+
+    steps_done = 0
+
+    episode_durations = []
+
+    num_episodes = 100
+    episode_durations, losses= run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
+
+
+    print('Complete')
+
+    plt.ioff()
+    plt.show()
+
+if __name__ == "main":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--env',
+                        type=int,
+                        required=True,
+                        help='Which environment to use; 0:Baird, 1:Mountain Car, 2:Bipedal Walker, 3:Hanging Joints, 4:Pole Balancing'
+                        )
+    args = parser.parse_args()
+    main(args)
