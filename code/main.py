@@ -15,14 +15,45 @@ import torch.optim as optim
 import torch.nn.functional as F
 import torchvision.transforms as T
 
+import argparse
+
 from model import ReplayMemory, DQN
 
 """Code based on https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html"""
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--env',
+                    type=int,
+                    required=True,
+                    help='Which environment to use; 0:Baird, 1:Mountain Car, 2:Bipedal Walker, 3:Hanging Joints, 4:Pole Balancing'
+)
+
+# TODO:
+# Add option for replay
+# Add option for Fixed Target Policy
+# Add option for type of Reward Clipping
+# Add option for other (hyper) parameters
+
+args = parser.parse_args()
+
+BATCH_SIZE = 128
+GAMMA = 0.999
+EPS_START = 0.9
+EPS_END = 0.05
+EPS_DECAY = 200
+TARGET_UPDATE = 10
+
 Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
 
-env = gym.make('CartPole-v0').unwrapped
+assert args.env in env_options
+
+env_options = {
+    0 : None,
+    4 : gym.make('CartPole-v0').unwrapped,
+}
+
+env = env_options[args.env]
 
 # set up matplotlib
 is_ipython = 'inline' in matplotlib.get_backend()
@@ -78,13 +109,6 @@ plt.imshow(get_screen().cpu().squeeze(0).permute(1, 2, 0).numpy(),
            interpolation='none')
 plt.title('Example extracted screen')
 plt.show()
-
-BATCH_SIZE = 128
-GAMMA = 0.999
-EPS_START = 0.9
-EPS_END = 0.05
-EPS_DECAY = 200
-TARGET_UPDATE = 10
 
 # Get screen size so that we can initialize layers correctly based on shape
 # returned from AI gym. Typical dimensions at this point are close to 3x40x90
@@ -189,7 +213,7 @@ def optimize_model():
         param.grad.data.clamp_(-1, 1)
     optimizer.step()
 
-num_episodes = 50
+num_episodes = 100
 for i_episode in range(num_episodes):
     # Initialize the environment and state
     env.reset()
@@ -231,4 +255,3 @@ env.render()
 env.close()
 plt.ioff()
 plt.show()
-
