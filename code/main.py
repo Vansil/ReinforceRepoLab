@@ -28,7 +28,6 @@ parser.add_argument('--env',
                     help='Which environment to use; 0:Baird, 1:Mountain Car, 2:Bipedal Walker, 3:Hanging Joints, 4:Pole Balancing.'
 )
 
-# TODO:
 parser.add_argument('--replay',
                     type=bool,
                     required=True,
