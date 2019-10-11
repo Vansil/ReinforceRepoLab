@@ -106,6 +106,7 @@ def main(args):
     os.makedirs("results", exist_ok=True)
 
     # Print results to CSV file
+    print(f"results/{output_file}.csv")
     with open(f"results/{output_file}.csv", 'w') as f:
         f.write("EPISODE;DURATION;LOSSES\n")
         for i, (duration, losses) in enumerate(zip(episode_durations, losses)):
