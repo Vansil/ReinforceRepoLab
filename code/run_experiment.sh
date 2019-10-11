@@ -17,39 +17,33 @@ export LD_LIBRARY_PATH=/hpc/eb/Debian9/cuDNN/7.1-CUDA-8.0.44-GCCcore-5.4.0/lib64
 export PYTHONIOENCODING=utf8
 
 # Copy all files required for the tasks to SCRATCH
-cp -r $HOME/.../DIRECTORY "$TMPDIR"
+DIRECTORY='ReinforceRepoLab/code'
+cp -r $HOME/"$DIRECTORY" "$TMPDIR"
+
+INPUT_FILE=$1
 
 # For each core available on this node, run the program in parallel
 NPROC=`nproc --all`
-#for i in `seq 1 $NPROC`; do
+for i in `seq 1 $NPROC`; do
+    # read first line
+    read -r argsstring<"$INPUT_FILE"
 
-node=1
+    # if string is empty, skip
+    if [ -z "$argsstring" ]; then
+        break
+    fi
 
-# For each environment
-for j in `seq 0 3`; do
+    # remove first line
+    tail -n +2 "$INPUT_FILE" > "$INPUT_FILE.tmp" && mv "$INPUT_FILE.tmp" "$INPUT_FILE"
 
-# For without and with experience replay
-for k in `seq 0 1`; do
-
-# Without fixed target policy or with
-for l in `seq 0 1`; do
-
-# For each setting for reward clipping
-for m in `seq 0 2`; do
-	if (("$node" > $NPROC)); then
-	   break
-	fi
-	(
-	cd "$TMPDIR"/DIRECTORY
-	# run program ...
-	python SCRIPT --env $j --replay $k --fixed_T_policy $l --reward_clip $m
-    	# copy the results back
-    	cp -r results $HOME/.../RESULTS/
+	  (
+	      cd "$TMPDIR"/"DIRECTORY"
+	      # run program ...
+        #echo "$argsstring"
+	      python main.py "$argsstring"
+    	  # copy the results back
+    	  cp -r results $HOME/"$DIRECTORY"/RESULTS
     ) &
-	let "node=node++" # increment counter	
-
 done
-done
-done
-done
+rm $INPUT_FILE
 wait
