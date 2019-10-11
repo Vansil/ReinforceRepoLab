@@ -106,17 +106,16 @@ def main(args):
     os.makedirs("results", exist_ok=True)
 
     # Print results to CSV file
-    print(f"results/{output_file}.csv")
-    with open(f"results/{output_file}.csv", 'w') as f:
+    with open("results/"+output_file+".csv", 'w') as f:
         f.write("EPISODE;DURATION;LOSSES\n")
         for i, (duration, losses) in enumerate(zip(episode_durations, losses)):
-            f.write(f"{i};{duration};{losses}\n")
+            f.write(i+";"+duration+";"+losses+"\n")
 
-    with open(f"results/{output_file}_cumulative_rewards.csv", 'w') as f:
+    with open(f"results/"+output_file+"_cumulative_rewards.csv", 'w') as f:
         for episode in rewards:
             comma=""
             for reward in list(accumulate(episode)):
-                f.write(f"{comma}{reward}")
+                f.write(comma+reward)
                 comma=";"
             f.write("\n")
 
