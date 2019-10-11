@@ -29,8 +29,12 @@ def main(args):
     target_bool = args.fixed_T_policy
     reward_num = args.reward_clip
     seed = args.seed
-    layers = args.architecture
+    #layers = args.architecture
     output_file = args.output
+
+    # Get architecture
+    architecture_dict = {0 : [64, 64], 1: [256, 256], 2: [128, 64, 32]}
+    layers = architecture_dict[args.architecture]
 
     # training params
     num_episodes = args.n_episodes

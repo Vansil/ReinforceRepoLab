@@ -35,7 +35,7 @@ class DQN(nn.Module):
     def __init__(self, state_features, num_actions, layers = [64,64]):
         super(DQN, self).__init__()
         self.net = nn.Sequential()
-        for i,layer in enumerate(layers):
+        for i, layer in enumerate(layers):
             if i==0:
                 self.net.add_module("Input",nn.Linear(state_features, layer))
                 self.net.add_module(f"ReLU{i}", nn.ReLU())
@@ -46,5 +46,5 @@ class DQN(nn.Module):
                 self.net.add_module(f"ReLU{i}", nn.ReLU())
 
     def forward(self, x):
-        return self.classifier(x)
+        return self.net(x)
 
