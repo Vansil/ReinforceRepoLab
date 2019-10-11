@@ -18,7 +18,8 @@ export PYTHONIOENCODING=utf8
 
 # Copy all files required for the tasks to SCRATCH
 DIRECTORY='ReinforceRepoLab/code'
-cp -r $HOME/"$DIRECTORY" "$TMPDIR"/ReinforceRepoLab
+mkdir -p "$TMPDIR/ReinforceRepoLab"
+cp -r $HOME/"$DIRECTORY" "$TMPDIR/ReinforceRepoLab"
 
 INPUT_FILE=$1
 
@@ -38,7 +39,6 @@ for i in `seq 1 $NPROC`; do
 
 	  (
 	      cd "$TMPDIR/$DIRECTORY"
-              ls
 	      # run program ...
         #echo "$argsstring"
 	      python main.py "$argsstring" --output "RESULTS_JOB_$2_$i"
