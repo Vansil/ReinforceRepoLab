@@ -6,7 +6,8 @@ import random
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-from itertools import count
+from itertools import count, accumulate
+import os
 
 import torch
 import torch.nn as nn
@@ -95,18 +96,28 @@ def main(args):
     optimizer = optim.Adam(model.parameters(), lr=lr)
     memory = ReplayMemory(memory_size)
 
-    episode_durations, losses = run_episodes(model, target_net, memory, env, num_episodes, batch_size, discount_factor, optimizer,
+    episode_durations, losses, rewards = run_episodes(model, target_net, memory, env, num_episodes, batch_size, discount_factor, optimizer,
                                              target_update=target_update, replay_bool=replay_bool,
                                              reward_clip=reward_num, device = device)
 
     print('Complete')
 
-    # Print results to CSV file
-    with open(output_file, 'w') as f:
-        f.write("EPISODE_DURATION\tLOSSES\n")
-        for (duration, losses) in zip(episode_durations, losses):
-            f.write(f"{duration}\t{losses}\n")
+    # Create results directory if it does not exist yet
+    os.makedirs("results", exist_ok=True)
 
+    # Print results to CSV file
+    with open(f"results/{output_file}.csv", 'w') as f:
+        f.write("EPISODE;DURATION;LOSSES\n")
+        for i, (duration, losses) in enumerate(zip(episode_durations, losses)):
+            f.write(f"{i};{duration};{losses}\n")
+
+    with open(f"results/{output_file}_cumm_rewards.csv", 'w') as f:
+        for episode in rewards:
+            comma=""
+            for reward in list(accumulate(episode)):
+                f.write(f"{comma}{reward}")
+                comma=";"
+            f.write("\n")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -137,7 +148,7 @@ if __name__ == "__main__":
 
     experiment_parse.add_argument(
         '--output', type=str, required=True,
-        help='Which file to store the results in.')
+        help='Filename of results output file without extension')
 
     training_parse = parser.add_argument_group('Training')
 
