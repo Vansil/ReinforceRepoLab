@@ -37,7 +37,7 @@ for i in `seq 1 $NPROC`; do
     tail -n +2 "$INPUT_FILE" > "$INPUT_FILE.tmp" && mv "$INPUT_FILE.tmp" "$INPUT_FILE"
 
 	  (
-	      cd "$TMPDIR/DIRECTORY"
+	      cd "$TMPDIR/$DIRECTORY"
 	      # run program ...
         #echo "$argsstring"
 	      python main.py "$argsstring" --output "RESULTS_JOB_$2_$i"
