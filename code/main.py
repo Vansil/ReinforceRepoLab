@@ -30,6 +30,7 @@ def main(args):
     reward_num = args.reward_clip
     seed = args.seed
     layers = args.architecture
+    output_file = args.output
 
     # training params
     num_episodes = args.n_episodes
@@ -96,8 +97,13 @@ def main(args):
 
     print('Complete')
 
+    print(episode_durations)
+    print(losses)
+    #with open(output_file, 'w') as f:
 
-if __name__ == "main":
+
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     experiment_parse = parser.add_argument_group('Experiments')
     experiment_parse.add_argument(
