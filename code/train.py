@@ -81,7 +81,11 @@ def run_episodes(model,target_net, memory, env, num_episodes, batch_size, discou
     global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
     episode_durations = []  #
     losses = []
+    # reward for each time step for each episode
+    rewards_per_episode = []
     for i in range(num_episodes):
+        rewards = [] # For each time step
+
         # initialise inside the episode counter
         episode_steps = 0
         # initialise epsilon
@@ -91,6 +95,10 @@ def run_episodes(model,target_net, memory, env, num_episodes, batch_size, discou
         action = select_action(model, s, epsilon, device=device)
         while True:
             s_new, r, is_terminal, prob = env.step(action)
+
+            # store reward for each time step in order to calculate cumulative reward
+            rewards.append(r)
+
             # store the state
             memory.push((s, action, r, s_new, is_terminal))
             # train the Qnet
@@ -109,5 +117,6 @@ def run_episodes(model,target_net, memory, env, num_episodes, batch_size, discou
             if is_terminal:
                 episode_durations.append(episode_steps)
                 break
+        rewards_per_episode.append(rewards)
 
-    return episode_durations, losses
+    return episode_durations, losses, rewards_per_episode
