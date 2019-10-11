@@ -111,7 +111,7 @@ def main(args):
         for i, (duration, losses) in enumerate(zip(episode_durations, losses)):
             f.write(i+";"+duration+";"+losses+"\n")
 
-    with open(f"results/"+output_file+"_cumulative_rewards.csv", 'w') as f:
+    with open("results/"+output_file+"_cumulative_rewards.csv", 'w') as f:
         for episode in rewards:
             comma=""
             for reward in list(accumulate(episode)):
