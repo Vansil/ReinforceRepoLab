@@ -124,6 +124,10 @@ if __name__ == "main":
         '--architecture', type=int, required=True, default=1,
         help='Which architecture to use: 0 : [64, 64]; 1: [256, 256] ; 2:[128, 64, 32]')
 
+    experiment_parse.add_argument(
+        '--output', type=str, required=True,
+        help='Which file to store the results in.')
+
     training_parse = parser.add_argument_group('Training')
 
     training_parse.add_argument(
@@ -152,3 +156,4 @@ if __name__ == "main":
 
     args = parser.parse_args()
     main(args)
+
