@@ -38,6 +38,7 @@ for i in `seq 1 $NPROC`; do
 
 	  (
 	      cd "$TMPDIR/$DIRECTORY"
+              ls
 	      # run program ...
         #echo "$argsstring"
 	      python main.py "$argsstring" --output "RESULTS_JOB_$2_$i"
