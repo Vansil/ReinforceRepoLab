@@ -18,7 +18,7 @@ export PYTHONIOENCODING=utf8
 
 # Copy all files required for the tasks to SCRATCH
 DIRECTORY='ReinforceRepoLab/code'
-cp -r $HOME/"$DIRECTORY" "$TMPDIR"
+cp -r $HOME/"$DIRECTORY" "$TMPDIR"/ReinforceRepoLab
 
 INPUT_FILE=$1
 
