@@ -18,7 +18,8 @@ mkdir -p results_experiments
 for i in `seq 1 $JOBS`; do
     head -$(($i * $NPROC)) $FILE | tail -$NPROC > "$FILE.job$i"
     # args: $1: where to read params from, $2: job number
-    sbatch -p gpu run_experiment.sh "$FILE.job$i" $i
+    # sbatch -p gpu run_experiment.sh "$FILE.job$i" $i
+    sbatch run_experiment.sh "$FILE.job$i" $i
     #bash run_experiment.sh "$FILE.job$i"
 done
 rm $FILE
