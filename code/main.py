@@ -101,10 +101,11 @@ def main(args):
 
     print('Complete')
 
-    print(episode_durations)
-    print(losses)
-    #with open(output_file, 'w') as f:
-
+    # Print results to CSV file
+    with open(output_file, 'w') as f:
+        f.write("EPISODE_DURATION\tLOSSES\n")
+        for (duration, losses) in zip(episode_durations, losses):
+            f.write(f"{duration}\t{losses}\n")
 
 
 if __name__ == "__main__":
