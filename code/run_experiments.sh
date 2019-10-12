@@ -1,6 +1,6 @@
 #!/bin/bash
 
-FILE='exp_settings.txt'
+FILE='exp_settings'
 
 bash create_settings.sh > $FILE
 
@@ -20,6 +20,6 @@ for i in `seq 1 $JOBS`; do
     # args: $1: where to read params from, $2: job number
     # sbatch -p gpu run_experiment.sh "$FILE.job$i" $i
     sbatch run_experiment.sh "$FILE.job$i" $i
-    #bash run_experiment.sh "$FILE.job$i"
+    #bash run_experiment.sh "$FILE.job$i" $i
 done
 rm $FILE

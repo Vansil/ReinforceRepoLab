@@ -48,7 +48,7 @@ for i in `seq 1 $NPROC`; do
 	      cd "$TMPDIR/$DIRECTORY"
 	      # run program ...
         #echo "$argsstring"
-	      python3 main.py "$argsstring" --output "RESULTS_JOB_$2_$i"
+	      python3 main.py $argsstring --output "RESULTS_JOB_$2_$i"
     	  # copy the results back
     	  cp -r results $HOME/"$DIRECTORY"/results_experiments
     ) &
