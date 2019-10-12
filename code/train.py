@@ -23,11 +23,12 @@ def compute_q_val(model, state, action):
     return q_val
 
 
-def compute_target(model, reward, next_state, done, discount_factor):
+def compute_target(model, reward, next_state, done, discount_factor, device= 'cpu'):
     # done is a boolean (vector) that indicates if next_state is terminal (episode is done)
     scores = model(next_state)
-    next_q = torch.max(scores, 1)[0]
-    target = reward + (torch.ones(done.size()) - done) * discount_factor * next_q
+    next_q = torch.max(scores, 1)[0].to(device)
+    #discount_factor = discount_factor.to(device)
+    target = reward + (torch.ones(done.size(), device=device) - done) * discount_factor * next_q
     target = target.unsqueeze(1)
     return target
 
@@ -55,7 +56,7 @@ def train(model, target_net, memory, optimizer, batch_size, discount_factor, dev
     q_val = compute_q_val(model, state, action)
 
     with torch.no_grad():  # Don't compute gradient info for the target (semi-gradient)
-        target = compute_target(target_net, reward, next_state, done, discount_factor)
+        target = compute_target(target_net, reward, next_state, done, discount_factor, device=device)
 
     # loss is measured from error between current and newly expected Q values
     loss = torch.nn.functional.smooth_l1_loss(q_val, target)
@@ -102,7 +103,7 @@ def run_episodes(model,target_net, memory, env, num_episodes, batch_size, discou
             # store the state
             memory.push((s, action, r, s_new, is_terminal))
             # train the Qnet
-            loss = train(model, target_net, memory, optimizer, batch_size, discount_factor)
+            loss = train(model, target_net, memory, optimizer, batch_size, discount_factor, device=device)
             losses.append(loss)
             # update counters
             episode_steps += 1
@@ -112,7 +113,7 @@ def run_episodes(model,target_net, memory, env, num_episodes, batch_size, discou
                 target_net.load_state_dict(model.state_dict())
             # take new action
             epsilon = get_epsilon(global_steps)
-            action = select_action(model, s_new, epsilon)
+            action = select_action(model, s_new, epsilon, device=device)
             s = s_new
             if is_terminal:
                 episode_durations.append(episode_steps)
