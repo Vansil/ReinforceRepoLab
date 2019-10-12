@@ -6,7 +6,8 @@ bash create_settings.sh > $FILE
 
 # NOTE: I am not sure whether NPROC is actually the number of cores of the node we submit the job to
 
-NPROC=`nproc --all`
+#NPROC=`nproc --all`
+NPROC=12
 NLINES=$(wc -l < $FILE)
 JOBS=$((($NLINES + $NPROC -1)/$NPROC))
 
