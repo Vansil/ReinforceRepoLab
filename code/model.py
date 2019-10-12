@@ -40,9 +40,10 @@ class DQN(nn.Module):
                 self.net.add_module("Input",nn.Linear(state_features, layer))
                 self.net.add_module(f"ReLU{i}", nn.ReLU())
             elif i==len(layers)-1:
-                self.net.add_module(f"Hidden{i}",nn.Linear(layer, num_actions))
+                self.net.add_module(f"Hidden{i}",nn.Linear(layers[i-1], layer))
+                self.net.add_module("Output",nn.Linear(layer, num_actions))
             else:
-                self.net.add_module("Output",nn.Linear(layer, layer))
+                self.net.add_module(f"Hidden{i}",nn.Linear(layers[i-1], layer))
                 self.net.add_module(f"ReLU{i}", nn.ReLU())
 
     def forward(self, x):
