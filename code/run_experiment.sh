@@ -32,6 +32,7 @@ INPUT_FILE=$1
 
 # For each core available on this node, run the program in parallel
 NPROC=`nproc --all`
+echo $NPROC 'cores available'
 for i in `seq 1 $NPROC`; do
     # read first line
     read -r argsstring<"$INPUT_FILE"
