@@ -15,15 +15,32 @@ import torch.optim as optim
 import torch.nn.functional as F
 
 import argparse
+import wandb
 from train import run_episodes
 from model import ReplayMemory, DQN
 
-"""Code based on https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html"""
+"""Code based on the Lab 2 and HW 2 of the RL course"""
+class BairdsCounterExample:
+    def __init__(self):
+        self.n_states = 7
 
+    def reset(self):
+        self.current = np.random.choice(np.arange(0, 6))
+        return self.current
 
-# TODO:
+    def step(self, action):
+        if action == 1:
+            self.current = 6
+        elif action == 0:
+            self.current = np.random.choice(np.arange(0, 6))
+        done = False
+        return self.current, 0, done, ""
+
+    # TODO:
 # Add option for replay
 def main(args):
+    wandb.init(config=args, project="rl")
+
     # experiment params
     env = args.env
     replay_bool = args.replay
@@ -53,21 +70,20 @@ def main(args):
 
     # if target network is the same, then update every time
     if not target_bool:
-        target_update = 0
+        target_update = 1
 
     env_options = {
-        0: None,
-        1: gym.make('MountainCar-v0'),
-        2: gym.make('BipedalWalker-v2'),
-        3: gym.make('Acrobot-v1'),
-        4: gym.make('CartPole-v0'),
-
+        #0: None,
+        0: gym.make('MountainCar-v0'),
+        #0: gym.make('BipedalWalker-v2'),
+        1: gym.make('Acrobot-v1'),
+        2: gym.make('CartPole-v0')
     }
     print(env)
    # assert env in env_options.keys()
 
     env = env_options[env]
-
+    env.reset()
     # seed
     torch.manual_seed(seed)
     env.seed(seed)
@@ -82,7 +98,11 @@ def main(args):
     # torch.backends.cudnn.benchmark = False
 
     # Get number of actions from gym action space
-    n_actions = env.action_space.n
+    try:
+        n_actions = env.action_space.n
+    except:
+        n_actions = 4
+        box = True
     # Get number of features from gym environment
     obs = env.reset()
     num_features = obs.size
@@ -92,6 +112,10 @@ def main(args):
     target_net = DQN(num_features, n_actions, layers).to(device)
     target_net.load_state_dict(model.state_dict())
     target_net.eval()
+    if box:
+        model.net.add_module("TANH",nn.Tanh())
+        target_net.net.add_module("TANH",nn.Tanh())
+    wandb.watch(model)
 
     optimizer = optim.Adam(model.parameters(), lr=lr)
     memory = ReplayMemory(memory_size)
@@ -153,7 +177,7 @@ if __name__ == "__main__":
     training_parse = parser.add_argument_group('Training')
 
     training_parse.add_argument(
-        '--n_episodes', type=int, default=1,
+        '--n_episodes', type=int, default=100,
         help="number of episodes")
 
     training_parse.add_argument(
@@ -169,7 +193,7 @@ if __name__ == "__main__":
         help="Training device 'cpu' or 'cuda:0'")
 
     training_parse.add_argument(
-        '--target_update_every', type=int, default=10,
+        '--target_update_every', type=int, default=50,
         help="Update target every XX episodes")
 
     training_parse.add_argument(

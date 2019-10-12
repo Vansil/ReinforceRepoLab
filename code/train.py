@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import wandb
 from model import DQN, ReplayMemory
 
 
@@ -118,9 +119,15 @@ def run_episodes(model,target_net, memory, env, num_episodes, batch_size, discou
             epsilon = get_epsilon(global_steps)
             action = select_action(model, s_new, epsilon, device=device)
             s = s_new
+            wandb.log({
+                "Rewards_per step": r,
+                "Loss": loss})
             if is_terminal:
                 episode_durations.append(episode_steps)
                 break
-        rewards_per_episode.append(rewards)
 
+
+        rewards_per_episode.append(rewards)
+        print(np.sum(rewards))
+        wandb.log({"Rewards_per episode": np.sum(rewards)})
     return episode_durations, losses, rewards_per_episode

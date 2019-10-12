@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # For each environment
-for env in `seq 1 4`; do
+for env in `seq 0 2`; do
 
     # For without and with experience replay
     for replay in `seq 0 1`; do
