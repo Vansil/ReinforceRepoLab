@@ -109,7 +109,10 @@ def run_episodes(model,target_net, memory, env, num_episodes, batch_size, discou
             episode_steps += 1
             global_steps += 1
             #update target model
-            if global_steps % target_update == 0:
+            if target_update > 0:
+                if global_steps % target_update == 0:
+                    target_net.load_state_dict(model.state_dict())
+            else:
                 target_net.load_state_dict(model.state_dict())
             # take new action
             epsilon = get_epsilon(global_steps)
