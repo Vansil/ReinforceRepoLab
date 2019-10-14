@@ -121,7 +121,7 @@ def main(args):
     optimizer = optim.Adam(model.parameters(), lr=lr)
     memory = ReplayMemory(memory_size)
 
-    episode_durations, losses, rewards = run_episodes(model, target_net, memory, env, num_episodes, batch_size, discount_factor, optimizer,
+    episode_durations, losses, rewards, norms = run_episodes(model, target_net, memory, env, num_episodes, batch_size, discount_factor, optimizer,
                                              target_update=target_update, replay_bool=replay_bool,
                                              reward_clip=reward_num, device = device)
 
@@ -132,9 +132,9 @@ def main(args):
 
     # Print results to CSV file
     with open("results/"+output_file+".csv", 'w') as f:
-        f.write("EPISODE;DURATION;LOSSES\n")
-        for i, (duration, losses) in enumerate(zip(episode_durations, losses)):
-            f.write(str(i)+";"+str(duration)+";"+str(losses)+"\n")
+        f.write("EPISODE;DURATION;LOSSES;NORMS\n")
+        for i, ((duration, losses), norm) in enumerate(zip(zip(episode_durations, losses), norms)):
+            f.write(str(i)+";"+str(duration)+";"+str(losses)+";"+str(norm)+"\n")
 
     with open("results/"+output_file+"_cumulative_rewards.csv", 'w') as f:
         for episode in rewards:
