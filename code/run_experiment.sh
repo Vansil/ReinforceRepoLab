@@ -48,7 +48,7 @@ for i in `seq 1 $NPROC`; do
 	      python3 main.py $argsstring --output "RESULTS_JOB_$2_$i"
     	  # copy the results back
     	  cp -r results $HOME/"$DIRECTORY"/results_experiments
-    	  cp -r wandb $HOME/"$DIRECTORY"/wandb
+    	  cp -r wandb $HOME/"$DIRECTORY"
     ) &
 done
 #rm $INPUT_FILE
