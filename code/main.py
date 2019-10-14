@@ -98,6 +98,7 @@ def main(args):
     # torch.backends.cudnn.benchmark = False
 
     # Get number of actions from gym action space
+    box = False
     try:
         n_actions = env.action_space.n
     except:
@@ -193,8 +194,8 @@ if __name__ == "__main__":
         help="Training device 'cpu' or 'cuda:0'")
 
     training_parse.add_argument(
-        '--target_update_every', type=int, default=50,
-        help="Update target every XX episodes")
+        '--target_update_every', type=int, default=10,
+        help="Update target every XX steps")
 
     training_parse.add_argument(
         '--gamma', type=float, default=0.999,

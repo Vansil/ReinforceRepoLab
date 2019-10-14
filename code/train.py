@@ -119,9 +119,16 @@ def run_episodes(model,target_net, memory, env, num_episodes, batch_size, discou
             epsilon = get_epsilon(global_steps)
             action = select_action(model, s_new, epsilon, device=device)
             s = s_new
+            #parameter norm
+            for p in model.parameters():
+                param_norm = p.grad.data.norm(2)
+                total_norm += param_norm.item() ** 2
+            total_norm = total_norm ** (1. / 2)
+
             wandb.log({
                 "Rewards_per step": r,
-                "Loss": loss})
+                "Loss": loss,
+                "Grad_norm": total_norm})
             if is_terminal:
                 episode_durations.append(episode_steps)
                 break
