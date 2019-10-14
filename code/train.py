@@ -120,6 +120,7 @@ def run_episodes(model,target_net, memory, env, num_episodes, batch_size, discou
             action = select_action(model, s_new, epsilon, device=device)
             s = s_new
             #parameter norm
+            total_norm = 0
             for p in model.parameters():
                 param_norm = p.grad.data.norm(2)
                 total_norm += param_norm.item() ** 2
