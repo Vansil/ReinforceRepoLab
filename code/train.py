@@ -122,7 +122,10 @@ def run_episodes(model,target_net, memory, env, num_episodes, batch_size, discou
             #parameter norm
             total_norm = 0
             for p in model.parameters():
-                param_norm = p.grad.data.norm(2)
+                if data in param_norm:
+                    param_norm = p.grad.data.norm(2)
+                else:
+                    param_norm = None
                 total_norm += param_norm.item() ** 2
             total_norm = total_norm ** (1. / 2)
 
