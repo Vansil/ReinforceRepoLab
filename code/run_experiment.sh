@@ -9,6 +9,7 @@
 #SBATCH --partition=gpu_shared_course
 #SBATCH --gres=gpu:2
 
+# Code for running the experiments
 
 module purge
 module load 2019
