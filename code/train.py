@@ -83,6 +83,7 @@ def run_episodes(model,target_net, memory, env, num_episodes, batch_size, discou
     global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
     episode_durations = []  #
     losses = []
+    norms = []
     # reward for each time step for each episode
     rewards_per_episode = []
     for i in range(num_episodes):
@@ -129,7 +130,7 @@ def run_episodes(model,target_net, memory, env, num_episodes, batch_size, discou
                     total_norm = np.NaN
 
             total_norm = total_norm ** (1. / 2)
-
+            norms.append(total_norm)
             wandb.log({
                 "Rewards_per step": r,
                 "Loss": loss,
@@ -142,4 +143,4 @@ def run_episodes(model,target_net, memory, env, num_episodes, batch_size, discou
         rewards_per_episode.append(rewards)
         print(np.sum(rewards))
         wandb.log({"Rewards_per episode": np.sum(rewards)})
-    return episode_durations, losses, rewards_per_episode
+    return episode_durations, losses, rewards_per_episode, norms
