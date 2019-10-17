@@ -1,8 +1,9 @@
 #!/bin/bash
 
-FILE='exp_settings'
+#FILE='exp_settings'
+FILE='params.txt'
 
-bash create_settings.sh > $FILE
+#bash create_settings.sh > $FILE
 
 # NOTE: I am not sure whether NPROC is actually the number of cores of the node we submit the job to
 
