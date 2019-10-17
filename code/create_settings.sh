@@ -41,7 +41,7 @@ for seed in ${seeds_array[@]}; do
                     ;;
             esac
                 # Write setting on line
-	              echo --env $env --replay $replay --fixed_T_policy $fixed_policy --reward_clip $reward_clip --seed $seed
+	              echo --env $env --replay $replay --fixed_T_policy $fixed_policy --reward_clip $reward_clip --seed $seed --lr $lr
 
         done
     done
