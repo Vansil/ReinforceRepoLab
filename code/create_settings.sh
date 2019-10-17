@@ -15,28 +15,28 @@ for seed in ${seeds_array[@]}; do
         for setting in ${settings_array[@]}; do
             case "$setting" in
                 0)
-                    replay=0
-                    fixed_policy=0
-                    reward_clip=0
+                    replay=1
+                    fixed_policy=1
+                    reward_clip=1
                     ;;
                 1)
-                    replay=1
-                    fixed_policy=0
-                    reward_clip=0
-                    ;;
-                2)
                     replay=0
                     fixed_policy=1
-                    reward_clip=0
+                    reward_clip=1
                     ;;
-                3)
-                    replay=0
+                2)
+                    replay=1
                     fixed_policy=0
                     reward_clip=1
                     ;;
+                3)
+                    replay=1
+                    fixed_policy=1
+                    reward_clip=0
+                    ;;
                 4)
-                    replay=0
-                    fixed_policy=0
+                    replay=1
+                    fixed_policy=1
                     reward_clip=100
                     ;;
             esac
